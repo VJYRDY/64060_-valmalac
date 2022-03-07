@@ -1,0 +1,277 @@
+---
+title: "FM2"
+author: "Vijay"
+date: '2022-21-02'
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+```{r}
+getwd()
+```
+
+##Here I am Importing the Dataset
+```{r}
+bank.df= read.csv("universalBank.csv")
+```
+
+```{r}
+summary(bank.df)
+```
+
+```{r}
+library(caret)
+library(class)
+library(dplyr)
+library(ISLR)
+library(psych)
+library(FNN)
+library(lattice)
+```
+
+##Now I am going to Remove ID ,  ZIP Code 
+```{r}
+bank.df$ID <- NULL
+bank.df$ZIP.Code <- NULL
+bank.df$Education = as.factor(bank.df$Education)
+```
+
+##later I am creating a dummy dataset
+```{r}
+dummyvari <- as.data.frame(dummy.code(bank.df$Education))
+```
+
+```{r}
+names(dummyvari) <- c("Education_1", "Education_2","Education_3")
+```
+
+##Now I am setting  education to NULL
+```{r}
+bank.df$Education <- NULL
+```
+
+```{r}
+bank_Final <- cbind(bank.df, dummyvari)
+
+```
+
+##Here I am going to divide the dataset into train and test
+```{r}
+set.seed(1)
+train.index <- createDataPartition(bank_Final$Personal.Loan, p= 0.6 , list=FALSE)
+valid.index <- setdiff(row.names(bank_Final), train.index)
+train.df <- bank_Final[train.index,]
+valid.df <- bank_Final[valid.index,]
+```
+
+##Now we are generating the Test data
+```{r}
+new_customer <- data.frame(Age = 40,
+                       Experience = 10,
+                       Income = 84,
+                       Family = 2,
+                       CCAvg = 2,
+                       Mortgage = 0,
+                       Securities.Account = 0,
+                       CD.Account = 0,
+                       Online = 1,
+                       CreditCard = 1,
+                       Education_1 = 0, 
+                       Education_2 = 1, 
+                       Education_3 = 0)
+                       
+```
+## normalisation
+```{r}
+train.norm.df <- train.df[,-7]
+valid.norm.df <- valid.df[,-7]
+new_customer.norm <- new_customer
+
+norm.values <- preProcess(train.df[, -7], method=c("center", "scale"))
+train.norm.df <- predict(norm.values, train.df[, -7])
+valid.norm.df <- predict(norm.values, valid.df[, -7])
+new_customer.norm <- predict(norm.values, new_customer.norm)
+```
+
+```{r}
+
+summary(train.norm.df)
+
+```
+##Here I am Performing Knn classification, using K=1
+```{r}
+
+outputrate <- class::knn(train = train.norm.df,test = new_customer.norm,
+                       cl = train.df$Personal.Loan, k = 1)
+
+print(outputrate)
+```
+
+
+##we are going to find best K
+```{r}
+accuracy.df <- data.frame(k = seq(1, 10, 1), accuracy = rep(0, 10))
+```
+
+
+```{r}
+for(i in 1:10) {
+  knn.prediction <- class::knn(train = train.norm.df,
+                         test = valid.norm.df,
+                         cl = train.df$Personal.Loan, k = i)
+  accuracy.df[i, 2] <- confusionMatrix(knn.prediction,
+                                       as.factor(valid.df$Personal.Loan))$overall[1]
+}
+which(accuracy.df[,2] == max(accuracy.df[,2]))
+```
+
+
+```{r}
+accuracy.df
+```
+
+
+
+##choosing k = 3
+```{r}
+knn.prediction <- class::knn(train = train.norm.df,
+                       test = valid.norm.df,
+                       cl = train.df$Personal.Loan, k = 3)
+
+confusionMatrix(knn.prediction, as.factor(valid.df$Personal.Loan), positive = "1")
+```
+
+##Now Here confusion matrix for the best k value =3
+
+```{r}
+newcustomer <- data.frame(Age = 40,
+                            Experience = 10,
+                            Income = 84,
+                            Family = 2,
+                            CCAvg = 2,
+                            Mortgage = 0,
+                            Securities.Account = 0,
+                            CD.Account = 0,
+                            Online = 1,
+                            CreditCard = 1,
+                            Education_1 = 0, 
+                            Education_2 = 1, 
+                            Education_3 = 0)
+
+fitknn <-class::knn(train = train.norm.df,
+                          test = newcustomer,
+                          cl = train.df$Personal.Loan, k = 3)
+
+fitknn
+```
+##knn model tells that new customer will accept loan
+##reading the dataset
+
+```{r}
+bank.df= read.csv("universalBank.csv")
+```
+
+##packages
+
+```{r}
+library(ISLR)
+library(psych)
+library(caret)
+library(FNN)
+library(class)
+library(dplyr)
+library(lattice)
+
+```
+
+##here i am removing id and zipcode variables from the dataset
+
+```{r}
+bank.df$ID <- NULL
+bank.df$ZIP.Code <- NULL
+bank.df$Education = as.factor(bank.df$Education)
+
+```
+
+##Creating a dummy dataframe
+
+```{r}
+dummymod <- as.data.frame(dummy.code(bank.df$Education))
+
+```
+
+##Renaming the data frame
+
+```{r}
+names(dummymod) <- c("Education_1", "Education_2","Education_3")
+
+```
+
+##deleting education variable
+
+```{r}
+bank.df$Education <- NULL 
+
+```
+
+##Main dataset
+
+```{r}
+bank_Final <- cbind(bank.df, dummymod)
+
+```
+
+#Partitioning  the dataset
+
+```{r}
+set.seed(1)
+train.index <- createDataPartition(bank_Final$Personal.Loan, p= 0.5 , list=FALSE)
+valid.index <- createDataPartition(bank_Final$Personal.Loan, p= 0.3 , list=FALSE)
+test.index <- setdiff(row.names(bank_Final), union(train.index, valid.index))
+                      
+train.df <- bank_Final[train.index, ]
+valid.df <- bank_Final[valid.index, ]
+test.df <- bank_Final[test.index, ]
+
+```
+
+##Performing normalisation
+
+```{r}
+train.norm.df <- train.df[,-7]
+valid.norm.df <- valid.df[,-7]
+test.norm.df <- test.df[,-7]
+
+norm.values <- preProcess(train.df[, -7], method=c("center", "scale"))
+train.norm.df <- predict(norm.values, train.df[, -7])
+valid.norm.df <- predict(norm.values, valid.df[, -7])
+test.norm.df <- predict(norm.values, test.df[, -7])
+
+```
+
+##Performing Knn classification using K=3
+
+```{r}
+knn.test.pred <- class::knn(train = train.norm.df,
+                       test = test.norm.df,
+                       cl = train.df$Personal.Loan, k = 3)
+
+knn.train.pred <- class::knn(train = train.norm.df,
+                             test = train.norm.df,
+                             cl = train.df$Personal.Loan, k = 3)
+
+knn.valid.pred <- class::knn(train = train.norm.df,
+                             test = valid.norm.df,
+                             cl = train.df$Personal.Loan, k = 3)
+```
+
+##Confusion matrix for K=3
+
+```{r}
+confusionMatrix(knn.test.pred, as.factor(test.df$Personal.Loan), positive = "1")
+confusionMatrix(knn.train.pred, as.factor(train.df$Personal.Loan), positive = "1")
+confusionMatrix(knn.valid.pred, as.factor(valid.df$Personal.Loan), positive = "1")
+
+```
