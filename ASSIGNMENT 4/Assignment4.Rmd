@@ -1,0 +1,136 @@
+---
+title: "FML4"
+author: "Vijay"
+date: '2022-03-16'
+output:
+  pdf_document: default
+  word_document: default
+---
+
+a.Use only the numerical variables (1 to 9) to cluster the 21 firms. Justify the various choices made in
+conducting the cluster analysis, such as weights for different variables, the specific clustering algorithm(s) used, the number of clusters formed, and so on.
+
+
+```{r}
+#Loading packages
+library(tidyverse)  
+library(factoextra) 
+library(flexclust)
+library(ggcorrplot)
+library(FactoMineR)
+library(cluster)
+```
+
+```{r}
+Pharmdata <- read.csv("Pharmaceuticals.csv")
+head(Pharmdata)
+Pharmdata1 <- Pharmdata[3:11]
+head(Pharmdata1)
+summary(Pharmdata1)
+Pharmdata2 <- scale(Pharmdata1)
+row.names(Pharmdata2) <- Pharmdata[,1]
+distance <- get_dist(Pharmdata2)
+fviz_dist(distance)
+corr <- cor(Pharmdata2)
+ggcorrplot(corr, outline.color = "grey50", lab = TRUE, hc.order = TRUE, type = "full") 
+pca <- PCA(Pharmdata2)
+var <- get_pca_var(pca)
+
+fviz_pca_var(pca, col.var="contrib",
+             gradient.cols = c("green", "red", "blue"),
+             repel = TRUE 
+             ) + 
+  labs( title = "PCA Variable Variance")
+set.seed(10)
+wss <- vector()
+for(i in 1:10) wss[i] <- sum(kmeans(Pharmdata2,i)$withinss) 
+plot(1:10, wss , type = "b" , main = paste('Cluster of Companies') , xlab = "Number of Clusters", ylab="wss")
+wss
+```
+
+## Silhouette Method
+
+```{r}
+fviz_nbclust(Pharmdata2, kmeans, method = "silhouette")
+set.seed(1)
+k5 <- kmeans(Pharmdata2, centers = 5, nstart = 25) # k = 5, number of restarts = 25
+# Visualize the output
+k5$centers # output the centers
+k5$size # Number of companies in each cluster
+fviz_cluster(k5, data = Pharmdata2) # Visualize the output
+```
+```{r}
+set.seed(1)
+k51 = kcca(Pharmdata2, k=5, kccaFamily("kmedians"))
+k51
+clusters_index <- predict(k51)
+dist(k51@centers)
+image(k51)
+points(Pharmdata2, col=clusters_index, pch=19, cex=0.3)
+```
+
+b.Interpret the clusters with respect to the numerical variables used in forming the clusters
+
+#Calculating Mean of all variables for every cluster and plotting them
+```{r}
+Pharmdata1 %>% mutate(Cluster = k5$cluster) %>% group_by(Cluster) %>% summarise_all("mean")
+clusplot(Pharmdata2,k5$cluster, main="Clusters",color = TRUE, labels = 2,lines = 0)
+```
+
+Cluster 1: ELN, MRX, WPI and AVE
+
+Cluster 2: AGN and PHA
+
+Cluster 3: AHM,WYE,BMY,AZN, LLY, ABT, NVS and SGP
+
+Cluster 4: BAY, CHTT and IVX
+
+Cluster 5: JNJ, MRK, PFE and GSK
+
+
+Cluster 1 has got highest revenue growth , very good Net profit Margin and leverage with lowest PE ratio. It can be bought or hold.
+
+Cluster 2 PE ratio is very high , inferring that investors are expecting high growth , however, growth rate is only 12% and Net profit Margin is also low , making it overvalued and may not be a good choice overall.
+
+Cluster 3 has average risk (Beta) and relatively high Market Cap, ROE, ROA, Asset Turnover and Net Profit Margin ,high leverage.Attractive (relatively low) PE ratio indicates that the stock price is moderately valued hence can be bought and hold , making it ideal to own.
+
+Cluster 4 Though it has a good PE ratio, it carries a very high risk , very very high leverage and low Net Profit margin , making it very risky to own. Revenue growth is also very low.
+
+Cluster 5 is great with High Market Cap, ROE, ROA, Asset Turnover and Net Profit Margin. With a relatively low PE ratio the stock price is moderately valued, hence can be bought and hold.Further , revenue growth of 18.5% is good.
+
+c.Is there a pattern in the clusters with respect to the numerical variables (10 to 12)? (those not used in forming the clusters)
+
+```{r}
+Pharmdata3 <- Pharmdata[12:14] %>% mutate(Clusters=k5$cluster)
+ggplot(Pharmdata3, mapping = aes(factor(Clusters), fill =Median_Recommendation))+geom_bar(position='dodge')+labs(x ='Clusters')
+ggplot(Pharmdata3, mapping = aes(factor(Clusters),fill = Location))+geom_bar(position = 'dodge')+labs(x ='Clusters')
+ggplot(Pharmdata3, mapping = aes(factor(Clusters),fill = Exchange))+geom_bar(position = 'dodge')+labs(x ='Clusters')
+```
+
+
+d.Provide an appropriate name for each cluster using any or all of the variables in the dataset.
+Cluster 1: Good to buy or to hold
+Cluster 2: Risk better to sell
+Cluster 3: Take chance to buy or to hold
+Cluster 4: Highly Risky better to sell
+Cluster 5: Best time to buy or to hold
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
